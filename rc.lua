@@ -80,6 +80,11 @@ awful.layout.layouts = {
 }
 -- }}}
 
+local function awesome_quit()
+    awful.util.spawn("pkill google-chrome")
+    awesome.quit()
+end
+
 -- {{{ Menu
 -- Create a launcher widget and a main menu
 myawesomemenu = {
@@ -87,7 +92,9 @@ myawesomemenu = {
    { "manual", terminal .. " -e man awesome" },
    { "edit config", editor_cmd .. " " .. awesome.conffile },
    { "restart", awesome.restart },
-   { "quit", function() awesome.quit() end },
+   { "quit", function() awesome_quit() end },
+   { "lock", function() awful.util.spawn("i3lock") end },
+
 }
 
 mymainmenu = awful.menu({ items = { { "awesome", myawesomemenu, beautiful.awesome_icon },
@@ -219,6 +226,28 @@ awful.screen.connect_for_each_screen(function(s)
 end)
 -- }}}
 
+--autostart
+local function autostart_on_tag(app_command, screen_index, tag_index)
+    -- Переключение на указанный экран
+    awful.screen.focus(screen_index)
+
+    -- Переключение на указанный тег
+    local screen = awful.screen.focused()
+    local tag = screen.tags[tag_index]
+    if tag then
+        awful.tag.viewonly(tag)
+    end
+
+    -- Запуск приложения
+    awful.spawn.with_shell(app_command)
+end
+
+-- Запуск приложений на экране 1, теге 1
+autostart_on_tag("copyq", 1, 1)
+autostart_on_tag("blueman-manager", 1, 9)
+autostart_on_tag("telegram-desktop", 1, 1)
+autostart_on_tag("slack", 1, 1)
+
 -- {{{ Mouse bindings
 root.buttons(gears.table.join(
     awful.button({ }, 3, function () mymainmenu:toggle() end),
@@ -226,18 +255,22 @@ root.buttons(gears.table.join(
     awful.button({ }, 5, awful.tag.viewprev)
 ))
 -- }}}
-
+-- env XDG_CURRENT_DESKTOP=GNOME gnome-control-center
 -- {{{ Key bindings
 globalkeys = gears.table.join(
+    awful.key({ modkey, "s" }, "s", function() 
+        awful.spawn("env XDG_CURRENT_DESKTOP=GNOME gnome-control-center") end,
+        {description="open Gnome control center"}),
     awful.key({ modkey,           }, "s",      hotkeys_popup.show_help,
-              {description="show help", group="awesome"}),
+              {description="show hclp", group="awesome"}),
     awful.key({ modkey,           }, "Left",   awful.tag.viewprev,
               {description = "view previous", group = "tag"}),
     awful.key({ modkey,           }, "Right",  awful.tag.viewnext,
               {description = "view next", group = "tag"}),
     awful.key({ modkey,           }, "Escape", awful.tag.history.restore,
               {description = "go back", group = "tag"}),
-
+    awful.key({ modkey, }, "l", function() awful.util.spawn("i3lock") end,
+              {description = "lock", group = "awesome"}),
     awful.key({ modkey,           }, "j",
         function ()
             awful.client.focus.byidx( 1)
@@ -279,7 +312,7 @@ globalkeys = gears.table.join(
               {description = "open a terminal", group = "launcher"}),
     awful.key({ modkey, "Control" }, "r", awesome.restart,
               {description = "reload awesome", group = "awesome"}),
-    awful.key({ modkey, "Shift"   }, "q", awesome.quit,
+    awful.key({ modkey, "Shift"   }, "q", awesome_quit,
               {description = "quit awesome", group = "awesome"}),
 
     --awful.key({ modkey,           }, "l",     function () awful.tag.incmwfact( 0.05)          end,
@@ -518,6 +551,10 @@ awful.rules.rules = {
     -- Add titlebars to normal clients and dialogs
     { rule_any = {type = { "normal", "dialog" }
       }, properties = { titlebars_enabled = false }
+    },
+
+    { rule = { class = "telegram-desktop" },
+        properties = { screen = 2, tag = "1" }
     },
 
     -- Set Firefox to always map on the tag named "2" on screen 1.
